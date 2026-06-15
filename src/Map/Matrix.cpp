@@ -5,7 +5,7 @@
 Matrix::Matrix(){}
 Matrix::~Matrix(){}
 
-void Matrix::Load(std::shared_ptr<Palkia::Nitro::File> matrixData, uint32_t gameCode){
+void Matrix::Load(std::shared_ptr<Palkia::Nitro::File> matrixData){
     bStream::CMemoryStream stream(matrixData->GetData(), matrixData->GetSize(), bStream::Endianess::Little, bStream::OpenMode::In);
     
     mWidth = stream.readUInt8();

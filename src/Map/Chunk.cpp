@@ -137,8 +137,7 @@ Building* MapChunk::Select(uint32_t id){
     return nullptr;
 }
 
-MapChunk::MapChunk(uint16_t id, bStream::CStream& stream, uint32_t gameCode){
-    mID = id;
+MapChunk::MapChunk(bStream::CStream& stream, std::string gameCode){
     uint32_t permissionsSize = stream.readUInt32();
     uint32_t buildingsSize = stream.readUInt32();
     uint32_t modelSize = stream.readUInt32();
@@ -148,14 +147,12 @@ MapChunk::MapChunk(uint16_t id, bStream::CStream& stream, uint32_t gameCode){
 
     uint32_t bgmPlateSize = 0x00000000;
 
-    if(gameCode == (uint32_t)'EGPI'){
+    if(gameCode == "EGPI"){
         uint16_t bgSig = stream.readUInt16();
         uint16_t bgDataLen = stream.readUInt16();
         bgmPlateSize = bgDataLen + 0x04;
         stream.skip(bgDataLen);
     }
-
-    std::cout << "Reading chunk " << id << " with " << buildingsSize << " size building chunk" << std::endl;
 
     stream.seek(bgmPlateSize + 0x10);
     for(int i = 0; i < 1024; i++){
@@ -183,7 +180,6 @@ MapChunk::MapChunk(uint16_t id, bStream::CStream& stream, uint32_t gameCode){
         mBuildings.push_back(b);
     }
 
-    std::cout << "Read " << mBuildings.size() << " buildings" << std::endl;
 
     stream.seek(bgmPlateSize + permissionsSize + buildingsSize + 0x10);
     // read model buffer into memory so we can load this as and when we need to!
@@ -248,6 +244,5 @@ void MapChunk::ImportChunkNSBMD(std::string path){
     model.readBytesTo(mModelData.data(), mModelData.size());
 }
 
-MapChunk::~MapChunk(){
-
-}
+MapChunk::MapChunk(){}
+MapChunk::~MapChunk(){}

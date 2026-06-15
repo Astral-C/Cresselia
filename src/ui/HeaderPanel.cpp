@@ -14,16 +14,18 @@
 
 #include "ui/HeaderPanel.hpp"
 #include "ui/EncounterPanel.hpp"
+#include "ui/MatrixPanel.hpp"
+#include "ui/ChunkPanel.hpp"
 #include "GameResources.hpp"
 #include "imgui_internal.h"
 #include "IconsForkAwesome.h"
 
 namespace MapHeaderPanel {
 
-std::vector<std::string> mHeaderNames = {};
-std::vector<MapChunkHeader> mHeaders = {};
-std::string mSelectedPlaceName = "(none)";
-int mSelectedHeaderIndex = -1;
+std::vector<std::string> HeaderNames = {};
+std::vector<MapChunkHeader> Headers = {};
+std::string SelectedPlaceName = "(none)";
+int SelectedHeaderIndex = -1;
 
 bool InitHeaderPanel(std::unique_ptr<Palkia::Nitro::Rom>& rom, const GameConfig& config){
     auto arm9 = rom->GetFile("@arm9.bin");
@@ -34,18 +36,18 @@ bool InitHeaderPanel(std::unique_ptr<Palkia::Nitro::Rom>& rom, const GameConfig&
     auto mapTable = rom->GetFile(config.mMapTablePath);
     auto stream = bStream::CMemoryStream(mapTable->GetData(), mapTable->GetSize(), bStream::Endianess::Little, bStream::OpenMode::In);
     for(int x = 0; x < mapTable->GetSize() / 16; x++){
-        mHeaderNames.push_back(stream.readString(16));
+        HeaderNames.push_back(stream.readString(16));
     }
 
     uint8_t areaCount = 0;
-    for(int i = 0; i < mHeaderNames.size(); i++){
+    for(int i = 0; i < HeaderNames.size(); i++){
         MapChunkHeader header;
         header.Read(armStream, rom->GetHeader().gameCode);
         areaCount = std::max(header.mAreaID, areaCount);
-        mHeaders.push_back(header);
+        Headers.push_back(header);
     }
-    mHeaderNames.shrink_to_fit();
-    mHeaders.shrink_to_fit();
+    HeaderNames.shrink_to_fit();
+    Headers.shrink_to_fit();
     return true;
 }
 
@@ -66,11 +68,18 @@ void DrawPanel(std::string& ContextTool){
         ImGui::BeginGroup();
         ImGui::BeginListBox("##locationList", placenameBoxSize * ImVec2(1.0f, 0.96f));
         for(std::size_t location = 0; location < LocationNames.size(); location++){
-            if(ImGui::Selectable(LocationNames[location].c_str(), LocationNames[location] == mSelectedPlaceName)){
-                mSelectedPlaceName = LocationNames[location];
-                for(std::size_t headerIdx = 0; headerIdx < mHeaders.size(); headerIdx++){
-                    if(mHeaders[headerIdx].mPlaceNameID == location){
-                        mSelectedHeaderIndex = headerIdx; 
+            if(ImGui::Selectable(LocationNames[location].c_str(), LocationNames[location] == SelectedPlaceName)){
+                SelectedPlaceName = LocationNames[location];
+                for(std::size_t headerIdx = 0; headerIdx < Headers.size(); headerIdx++){
+                    if(Headers[headerIdx].mPlaceNameID == location){
+                        SelectedHeaderIndex = headerIdx; 
+                        if(Headers[SelectedHeaderIndex].mEncDataID != 0xFFFF) EncounterPanel::SetEncounterData(Headers[SelectedHeaderIndex].mEncDataID);
+                        if(Headers[SelectedHeaderIndex].mMatrixID != 0xFFFF) MatrixPanel::SetMatrixData(Headers[SelectedHeaderIndex].mMatrixID);
+                        if(Headers[SelectedHeaderIndex].mAreaID == 0xFF){
+                            ChunkPanel::SetChunkData(0, SelectedHeaderIndex, Configs[CurrentGameConfig()]);
+                        } else {
+                            ChunkPanel::SetChunkData(Headers[SelectedHeaderIndex].mAreaID, SelectedHeaderIndex, Configs[CurrentGameConfig()]);
+                        }                        
                         break;
                     }
                 }
@@ -83,15 +92,15 @@ void DrawPanel(std::string& ContextTool){
             //open modal
         }
         ImGui::SameLine();
-        if(ImGui::Button("Remove##removeLocationName", btnSize) && mSelectedPlaceName != ""){
+        if(ImGui::Button("Remove##removeLocationName", btnSize) && SelectedPlaceName != ""){
             // modal warn
-            for(auto& header : mHeaders){
-                if(mSelectedPlaceName == LocationNames[header.mPlaceNameID]){
+            for(auto& header : Headers){
+                if(SelectedPlaceName == LocationNames[header.mPlaceNameID]){
                     header.mPlaceNameID = 0;
                 }
             }
-            std::erase_if(LocationNames, [](std::string s){ return s == mSelectedPlaceName; });
-            mSelectedPlaceName = "";
+            std::erase_if(LocationNames, [](std::string s){ return s == SelectedPlaceName; });
+            SelectedPlaceName = "";
         }
         ImGui::PopStyleVar();
         ImGui::EndGroup();
@@ -102,12 +111,17 @@ void DrawPanel(std::string& ContextTool){
     if(config.mGameCode == "EUPC") {
         // Header name box
         ImGui::BeginListBox("##locations", headerNameBoxSize);
-        for (std::size_t i = 0; i < mHeaders.size(); i++) {
-            if(LocationNames[mHeaders[i].mPlaceNameID] == mSelectedPlaceName){
-                if(ImGui::Selectable(mHeaderNames[i].c_str(), mSelectedHeaderIndex == i)){
-                    mSelectedHeaderIndex = i;
-                    if(mHeaders[i].mEncDataID != 0xFFFF) EncounterPanel::SetEncounterData(mHeaders[i].mEncDataID);
-                    //if(mHeaders[i].mMatrixID != 0xFFFF) MatrixPanel::SetMatrixData(mHeaders[i].mMatrixID);
+        for (std::size_t i = 0; i < Headers.size(); i++) {
+            if(LocationNames[Headers[i].mPlaceNameID] == SelectedPlaceName){
+                if(ImGui::Selectable(HeaderNames[i].c_str(), SelectedHeaderIndex == i)){
+                    SelectedHeaderIndex = i;
+                    if(Headers[i].mEncDataID != 0xFFFF) EncounterPanel::SetEncounterData(Headers[i].mEncDataID);
+                    if(Headers[i].mMatrixID != 0xFFFF) MatrixPanel::SetMatrixData(Headers[i].mMatrixID);
+                    if(Headers[i].mAreaID == 0xFF){
+                        ChunkPanel::SetChunkData(0, i, Configs[CurrentGameConfig()]);
+                    } else {
+                        ChunkPanel::SetChunkData(Headers[i].mAreaID, i, Configs[CurrentGameConfig()]);
+                    }
                 }
             }
         }
@@ -115,7 +129,7 @@ void DrawPanel(std::string& ContextTool){
 
         ImGui::SameLine();
         
-        if(mSelectedHeaderIndex != -1){
+        if(SelectedHeaderIndex != -1){
             ImGui::BeginChild("##chunkHeaderEdit");
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(style.FramePadding.x, 15.0f));
 
@@ -130,7 +144,7 @@ void DrawPanel(std::string& ContextTool){
                 ImGui::PopFont();
                 // Draw header name input, extra padding to make text a bit more centered
                 ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(15.0f, 15.0f));
-                ImGui::InputText("##mapHeaderName", mHeaderNames[mSelectedHeaderIndex].data(), 16);
+                ImGui::InputText("##mapHeaderName", HeaderNames[SelectedHeaderIndex].data(), 16);
                 ImGui::PopStyleVar();
                 ImGui::SameLine(); // preserve line for area placard combo
             }
@@ -147,12 +161,12 @@ void DrawPanel(std::string& ContextTool){
     
                 // Draw Combo box of area placard images
                 ImGui::SetNextItemWidth(190);
-                if(ImGui::BeginCombo(std::format("##areaWinGraSelect{}", mSelectedHeaderIndex).data(), nullptr, ImGuiComboFlags_CustomPreview)){
+                if(ImGui::BeginCombo(std::format("##areaWinGraSelect{}", SelectedHeaderIndex).data(), nullptr, ImGuiComboFlags_CustomPreview)){
                     for(uint32_t j = 0; j < AreaTypeImages.size(); j++){
-                        bool is_selected = (mHeaders[mSelectedHeaderIndex].mTextBoxType-1 == j);
+                        bool is_selected = (Headers[SelectedHeaderIndex].mTextBoxType-1 == j);
                         float cursorX = ImGui::GetCursorPosX();
-                        if (ImGui::Selectable(std::format("##areaWin{}#{}",j,mSelectedHeaderIndex).c_str(), is_selected, 0, {136, 40})){
-                            mHeaders[mSelectedHeaderIndex].mTextBoxType = j+1;
+                        if (ImGui::Selectable(std::format("##areaWin{}#{}",j,SelectedHeaderIndex).c_str(), is_selected, 0, {136, 40})){
+                            Headers[SelectedHeaderIndex].mTextBoxType = j+1;
                         }
                         ImGui::SameLine();
                         ImGui::SetCursorPosX(cursorX);
@@ -164,10 +178,10 @@ void DrawPanel(std::string& ContextTool){
         
                 if(ImGui::BeginComboPreview()){
                     ImGui::SetCursorPosY(ImGui::GetCursorPosY()-12.5f); // hate
-                    if(mHeaders[mSelectedHeaderIndex].mTextBoxType >= AreaTypeImages.size()){
+                    if(Headers[SelectedHeaderIndex].mTextBoxType >= AreaTypeImages.size()){
                         ImGui::Image(AreaTypeImages[0], {136, 40});
                     } else {
-                        ImGui::Image(AreaTypeImages[mHeaders[mSelectedHeaderIndex].mTextBoxType-1], {136, 40});
+                        ImGui::Image(AreaTypeImages[Headers[SelectedHeaderIndex].mTextBoxType-1], {136, 40});
                     }
                     ImGui::EndComboPreview();
                 }
@@ -186,17 +200,17 @@ void DrawPanel(std::string& ContextTool){
                 ImGui::SetNextItemWidth(textWidth * 2.0f);
                 // Draw Encounter Set combo, needs padding for the same reasons as the header name
                 ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(15.0f, 15.0f));
-                if(ImGui::BeginCombo("##encounterSelectCombo", mHeaders[mSelectedHeaderIndex].mEncDataID != 0xFFFF ? std::format("Encounter Set {}", mHeaders[mSelectedHeaderIndex].mEncDataID).data() : "(NONE)")){
+                if(ImGui::BeginCombo("##encounterSelectCombo", Headers[SelectedHeaderIndex].mEncDataID != 0xFFFF ? std::format("Encounter Set {}", Headers[SelectedHeaderIndex].mEncDataID).data() : "(NONE)")){
                     if(ImGui::Selectable(ICON_LC_CIRCLE_PLUS " New", false)){
-                        mHeaders[mSelectedHeaderIndex].mEncDataID = EncounterPanel::NewEncounterData();
+                        Headers[SelectedHeaderIndex].mEncDataID = EncounterPanel::NewEncounterData();
                     }
-                    if(ImGui::Selectable("(NONE)", mHeaders[mSelectedHeaderIndex].mEncDataID == 0xFFFF)){
-                        mHeaders[mSelectedHeaderIndex].mEncDataID = 0xFFFF;
+                    if(ImGui::Selectable("(NONE)", Headers[SelectedHeaderIndex].mEncDataID == 0xFFFF)){
+                        Headers[SelectedHeaderIndex].mEncDataID = 0xFFFF;
                         EncounterPanel::SetEncounterData(0xFFFF);
                     }
                     for(uint16_t set = 0; set < EncounterSetCount; set++){
-                        if(ImGui::Selectable(std::format("Encounter Set {}", set).data(), set == mHeaders[mSelectedHeaderIndex].mEncDataID)){
-                        mHeaders[mSelectedHeaderIndex].mEncDataID = set;
+                        if(ImGui::Selectable(std::format("Encounter Set {}", set).data(), set == Headers[SelectedHeaderIndex].mEncDataID)){
+                        Headers[SelectedHeaderIndex].mEncDataID = set;
                         EncounterPanel::SetEncounterData(set);
                         }
                     }
@@ -217,10 +231,10 @@ void DrawPanel(std::string& ContextTool){
                 ImGui::SetCursorPos(tmpPos);
                 ImGui::SetNextItemWidth(200);
                 ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(15.0f, 15.0f));
-                if(ImGui::BeginCombo("##weatherSelectCombo", PlatWeatherLabels[mHeaders[mSelectedHeaderIndex].mWeatherID].data())){
+                if(ImGui::BeginCombo("##weatherSelectCombo", PlatWeatherLabels[Headers[SelectedHeaderIndex].mWeatherID].data())){
                     for(auto [id, label] : PlatWeatherLabels){
-                        if(ImGui::Selectable(label.data(), id == mHeaders[mSelectedHeaderIndex].mWeatherID)){
-                        mHeaders[mSelectedHeaderIndex].mWeatherID = id;
+                        if(ImGui::Selectable(label.data(), id == Headers[SelectedHeaderIndex].mWeatherID)){
+                        Headers[SelectedHeaderIndex].mWeatherID = id;
                         }
                     }
                     ImGui::EndCombo();
@@ -242,27 +256,27 @@ void DrawPanel(std::string& ContextTool){
 
                 ImGui::BeginGroup();
                 ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.5f, 2.5f));
-                bool enabled =  mHeaders[mSelectedHeaderIndex].mBicycleFlag == 1;
+                bool enabled =  Headers[SelectedHeaderIndex].mBicycleFlag == 1;
                 if(ImGui::Checkbox( ICON_LC_BIKE " Can Bike", &enabled)){
-                    mHeaders[mSelectedHeaderIndex].mBicycleFlag = enabled ? 1 : 0;
+                    Headers[SelectedHeaderIndex].mBicycleFlag = enabled ? 1 : 0;
                 }
                 ImGui::SameLine();
 
-                enabled = mHeaders[mSelectedHeaderIndex].mEscapeFlag == 1;
+                enabled = Headers[SelectedHeaderIndex].mEscapeFlag == 1;
                 if(ImGui::Checkbox( ICON_LC_ARROW_BIG_UP_DASH " Escape Rope", &enabled)){
-                    mHeaders[mSelectedHeaderIndex].mEscapeFlag = enabled ? 1 : 0;
+                    Headers[SelectedHeaderIndex].mEscapeFlag = enabled ? 1 : 0;
                 }
 
                 ImGui::SetCursorPosY(ImGui::GetCursorPosY()-0.145f);
-                enabled = mHeaders[mSelectedHeaderIndex].mDashFlag == 1;
+                enabled = Headers[SelectedHeaderIndex].mDashFlag == 1;
                 if(ImGui::Checkbox( ICON_LC_FOOTPRINTS " Can Run ", &enabled)){
-                    mHeaders[mSelectedHeaderIndex].mDashFlag = enabled ? 1 : 0;
+                    Headers[SelectedHeaderIndex].mDashFlag = enabled ? 1 : 0;
                 }
                 ImGui::SameLine();
                 
-                enabled = mHeaders[mSelectedHeaderIndex].mFlyFlag == 1;
+                enabled = Headers[SelectedHeaderIndex].mFlyFlag == 1;
                 if(ImGui::Checkbox( ICON_LC_BIRD " Fly Enabled", &enabled)){
-                    mHeaders[mSelectedHeaderIndex].mFlyFlag = enabled ? 1 : 0;
+                    Headers[SelectedHeaderIndex].mFlyFlag = enabled ? 1 : 0;
                 }
                 ImGui::PopStyleVar();
                 ImGui::EndGroup();
@@ -278,22 +292,33 @@ void DrawPanel(std::string& ContextTool){
                 
                 
                 ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(15.0f, 15.0f));
+
+                ImGui::PushFont(nullptr, 24.0f);
+                ImGui::AlignTextToFramePadding();
+                ImGui::Text(ICON_LC_SUN);
+                ImGui::PopFont();
+                ImGui::SameLine();
                 ImGui::SetNextItemWidth(300);
-                if(ImGui::BeginCombo(ICON_LC_SUN " Day##bgmDayCombo", DPPlatBGM[mHeaders[mSelectedHeaderIndex].mBgmDayID].data())){
+                if(ImGui::BeginCombo("##bgmDayCombo", DPPlatBGM[Headers[SelectedHeaderIndex].mBgmDayID].data())){
                     for(auto [id, label] : DPPlatBGM){
-                        if(ImGui::Selectable(label.data(), id == mHeaders[mSelectedHeaderIndex].mBgmDayID)){
-                        mHeaders[mSelectedHeaderIndex].mBgmDayID = id;
+                        if(ImGui::Selectable(label.data(), id == Headers[SelectedHeaderIndex].mBgmDayID)){
+                        Headers[SelectedHeaderIndex].mBgmDayID = id;
                         }
                     }
                     ImGui::EndCombo();
                 }
+                ImGui::SameLine();
 
+                ImGui::PushFont(nullptr, 24.0f);
+                ImGui::AlignTextToFramePadding();
+                ImGui::Text(ICON_LC_MOON_STAR);
+                ImGui::PopFont();
                 ImGui::SameLine();
                 ImGui::SetNextItemWidth(300);
-                if(ImGui::BeginCombo(ICON_LC_MOON_STAR " Night##bgmNightCombo", DPPlatBGM[mHeaders[mSelectedHeaderIndex].mBgmNightID].data())){
+                if(ImGui::BeginCombo("##bgmNightCombo", DPPlatBGM[Headers[SelectedHeaderIndex].mBgmNightID].data())){
                     for(auto [id, label] : DPPlatBGM){
-                        if(ImGui::Selectable(label.data(), id == mHeaders[mSelectedHeaderIndex].mBgmNightID)){
-                        mHeaders[mSelectedHeaderIndex].mBgmNightID = id;
+                        if(ImGui::Selectable(label.data(), id == Headers[SelectedHeaderIndex].mBgmNightID)){
+                        Headers[SelectedHeaderIndex].mBgmNightID = id;
                         }
                     }
                     ImGui::EndCombo();

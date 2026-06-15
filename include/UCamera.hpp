@@ -49,6 +49,7 @@ public:
 	void SetWindowSize(int w, int h) { mWinWidth = w; mWinHeight = h; }
 	void SetForward(glm::vec3 forward) { mForward = forward; }
 	void SetUp(glm::vec3 up) { mUp = up; }
+	void SetPosition(glm::vec2 pos);
 	glm::vec3 GetPosition() { return mEye; }
 	glm::vec3 GetForward() { return mForward; }
 	glm::mat4 GetViewMatrix() { return glm::lookAt(mEye, mCenter, mUp); }

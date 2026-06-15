@@ -1,5 +1,6 @@
 #ifndef __AREA_H__
 #define __AREA_H__
+#include "bstream/bstream.h"
 #include <cstdint>
 
 struct Area {
@@ -9,6 +10,11 @@ struct Area {
     uint16_t mDynamicTextureType;
     uint8_t mAreaType { 1 };
     uint16_t mLightType;
+
+    void Save(bStream::CStream& stream, bool isHGSS);
+    Area();
+    Area(bStream::CStream& stream, bool isHGSS);
+    ~Area();
 };
 
 

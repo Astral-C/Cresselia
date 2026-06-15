@@ -17,6 +17,12 @@ USceneCamera::USceneCamera() : mNearPlane(1.0f), mFarPlane(1000000.f), mFovy(glm
 	mEye.y = (mOrthoZoom * 16) * std::tan(glm::radians(45.0f));
 }
 
+void USceneCamera::SetPosition(glm::vec2 pos){
+    mEye.x = pos.y;
+   	mEye.z = pos.x +(mOrthoZoom * 16) * std::sin(glm::radians(45.0f));
+    mEye.y = (mOrthoZoom * 16) * std::tan(glm::radians(45.0f));
+}
+
 void USceneCamera::Update(float deltaTime) {
 	glm::vec3 moveDir = glm::zero<glm::vec3>();
 
@@ -32,23 +38,22 @@ void USceneCamera::Update(float deltaTime) {
 	//	moveDir += mForward;
 	if (UInput::GetKey(GLFW_KEY_D)){
 	    mEye.x += mMoveSpeed;
-	    mCenter.x += mMoveSpeed;	
+	    //mCenter.x += mMoveSpeed;	
 	//	moveDir -= mRight;
     }
 	if (UInput::GetKey(GLFW_KEY_A)){
         mEye.x -= mMoveSpeed;
-	    mCenter.x -= mMoveSpeed;
+	    //mCenter.x -= mMoveSpeed;
 	//    moveDir += mRight;
 	}
-	/*
-
-	if (UInput::GetKey(GLFW_KEY_Q))
-		moveDir -= mUp;
-	if (UInput::GetKey(GLFW_KEY_E))
-		moveDir += mUp;
-	*/
-
 	
+	/*
+	if (UInput::GetKey(GLFW_KEY_Q))
+		mEye.y -= mMoveSpeed;
+	if (UInput::GetKey(GLFW_KEY_E))
+		mEye.y += mMoveSpeed;
+	*/
+		
 	
 	//mMoveSpeed += UInput::GetMouseScrollDelta() * 100 * deltaTime;
 	mMoveSpeed = std::clamp(mMoveSpeed, 100.f, 50000.f);

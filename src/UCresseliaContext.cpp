@@ -29,7 +29,11 @@
 
 #include "ui/ChunkPanel.hpp"
 #include "ui/EncounterPanel.hpp"
+#include "ui/MatrixPanel.hpp"
 #include "ui/HeaderPanel.hpp"
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
@@ -38,10 +42,14 @@
 #include "IconsLucide.h"
 #include "lucide.h"
 #include "noto_sans_jp_regular.h"
+#include "cresselia_png.h"
 
 namespace {
     std::vector<CPointSprite> mBillboards {};
     std::map<uint32_t, uint32_t> mOverworldSpriteIDs {};
+
+    uint32_t mCresseliaImg;
+
 }
 
 UCresseliaContext::~UCresseliaContext(){
@@ -74,11 +82,21 @@ UCresseliaContext::UCresseliaContext(){
 
 	mGizmoOperation = ImGuizmo::OPERATION::TRANSLATE;
 
+	int w { 0 }, h { 0 }, channels { 0 };
+	uint8_t* data = stbi_load_from_memory((const uint8_t*)cresselia_png, cresselia_png_len, &w, &h, &channels, 4);
+	
+	glGenTextures(1, &mCresseliaImg);
+	glBindTexture(GL_TEXTURE_2D, mCresseliaImg);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	stbi_image_free(data);
+	
 	mAreaRenderer.Init();
 }
 
 bool UCresseliaContext::Update(float deltaTime) {
-	if(mViewportIsFocused){
+	if(mCurrentTool == "Chunk Editor"){
 		mCamera.Update(deltaTime);
 
 		if(ImGui::IsKeyPressed(ImGuiKey_1)){
@@ -226,6 +244,7 @@ void UCresseliaContext::RenderMenuBar() {
 			EncounterPanel::InitEncounterPanel(mRom, Configs[CurrentGameConfig()]);
 			MapHeaderPanel::InitHeaderPanel(mRom, Configs[CurrentGameConfig()]);
 			ChunkPanel::InitChunkPanel(mRom, Configs[CurrentGameConfig()]);
+			MatrixPanel::InitMatrixPanel(mRom, Configs[CurrentGameConfig()]);
 			
 			bIsFileDialogOpen = false;
 		} else {
@@ -282,7 +301,7 @@ void UCresseliaContext::RenderMenuBar() {
 	}
 
 	ImGui::SetNextWindowSize(viewportSize * 0.3f);
-	ImGui::SetNextWindowPos((viewportSize * 0.3f) - ((viewportSize * 0.75f) * 0.3f));
+	ImGui::SetNextWindowPos((viewportSize * 0.5f) - ((viewportSize * 0.3f) * 0.5f));
 	if (ImGui::BeginPopupModal("About Window", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove)){
 		auto windowWidth = ImGui::GetWindowSize().x;
 		auto textWidth = ImGui::CalcTextSize("Cresselia").x;
@@ -293,18 +312,20 @@ void UCresseliaContext::RenderMenuBar() {
 
 		ImGui::Separator();
 
-		textWidth = ImGui::CalcTextSize("https://github.com/Astral-C/Cresselia").x;
+		ImGui::SetCursorPosX((windowWidth - 80) * 0.5f);
+		ImGui::Image(static_cast<uintptr_t>(mCresseliaImg), { 80, 80 }, {0.0f, 0.0f}, {1.0f, 1.0f});
+		
+		textWidth = ImGui::CalcTextSize("github.com/Astral-C/Cresselia").x;
 		ImGui::SetCursorPosX((windowWidth - textWidth) * 0.5f);
-		ImGui::Text("https://github.com/Astral-C/Cresselia");
+		ImGui::Text("github.com/Astral-C/Cresselia");
 
 		textWidth = ImGui::CalcTextSize("Made by veebs").x;
-
 		ImGui::SetCursorPosX((windowWidth - textWidth) * 0.5f);
-		ImGui::NewLine();
 		ImGui::Text("Made by veebs");
 
 		ImGui::Separator();
 
+		
 		float size = 120 + style->FramePadding.x * 2.0f;
 		float avail = ImGui::GetContentRegionAvail().x;
 

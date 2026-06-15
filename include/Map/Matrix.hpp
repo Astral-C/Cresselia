@@ -23,7 +23,7 @@ public:
     int GetWidth() { return mWidth; }
     int GetHeight() { return mHeight; }
 
-    void Load(std::shared_ptr<Palkia::Nitro::File>, uint32_t);
+    void Load(std::shared_ptr<Palkia::Nitro::File>);
 
     Matrix();
     ~Matrix();

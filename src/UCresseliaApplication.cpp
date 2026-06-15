@@ -45,7 +45,7 @@ bool UCresseliaApplication::Setup() {
 	glfwWindowHintString(GLFW_X11_CLASS_NAME, "cresselia");
 	glfwWindowHintString(GLFW_WAYLAND_APP_ID, "cresselia");
 	
-	mWindow = glfwCreateWindow(1100, 700, "Cresellia", nullptr, nullptr);
+	mWindow = glfwCreateWindow(1100, 700, "Cresselia", nullptr, nullptr);
 	if (mWindow == nullptr) {
 		glfwTerminate();
 		return false;

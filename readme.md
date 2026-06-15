@@ -1,4 +1,4 @@
-## Cresellia
+## Cresselia
 
 A personal map making/modding tool for the DS Pokemon Titles
 

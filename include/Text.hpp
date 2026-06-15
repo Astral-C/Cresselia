@@ -1,4 +1,3 @@
-#define BSTREAM_IMPLEMENTATION
 #include "bstream/bstream.h"
 #include <vector>
 #include <string>

@@ -1,4 +1,4 @@
-## Rotom Plus
+## Cresellia
 
 A personal map making/modding tool for the DS Pokemon Titles
 

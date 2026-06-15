@@ -1,9 +1,9 @@
-#include "URotomApplication.hpp"
+#include "UCresseliaApplication.hpp"
 
 #include <iostream>
 
 int main(int argc, char* argv[]) {
-	URotomApplication app;
+	UCresseliaApplication app;
 
 	if (!app.Setup()) {
 		return 0;

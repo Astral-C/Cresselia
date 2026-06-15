@@ -2,7 +2,7 @@
 #include <string>
 #include "GameConfig.hpp"
 
-class RotomProject {
+class CresseliaProject {
     std::string mProjectName;
     GameConfig mConfig;
 };

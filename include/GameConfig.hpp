@@ -1,10 +1,10 @@
-#ifndef __GAME_CONFIG_H__
-#define __GAME_CONFIG_H__
+#pragma once
 #include <cstdint>
 #include <string>
 #include <map>
 
 struct GameConfig {
+    std::string mGameCode;
     uint32_t mChunkHeaderPtr;
     std::string mAreaDataPath;
     std::string mMapTablePath;
@@ -18,15 +18,23 @@ struct GameConfig {
     std::string mMoveModel;
     std::string mMoveModelList;
     std::string mIndoorBuildingPath;
+    std::string mAreaWinArcPath;
+    std::string mPokemonIconPath;
+    
     uint32_t mLocationNamesFileID;
     uint32_t mPokeNamesFileID;
     bool compressedArm9;
+    
+    uint32_t mPokemonIconPaletteMapOffset;
 };
 
 extern const GameConfig Platinum;
 extern const GameConfig SoulSilver;
+extern const GameConfig Black;
+
+uint32_t CurrentGameConfig();
+void CurrentGameConfig(uint32_t config);
 
 extern std::map<uint32_t, const GameConfig> Configs;
-
-
-#endif
+extern std::map<uint8_t, std::string> PlatWeatherLabels;
+extern std::map<uint16_t, std::string> DPPlatBGM;

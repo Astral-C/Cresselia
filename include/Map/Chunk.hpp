@@ -1,7 +1,7 @@
 #ifndef __MAP_CHUNK_H__
 #define __MAP_CHUNK_H__
-#include <glm/glm/glm.hpp>
-#include <NDS/System/Archive.hpp>
+#include <glm/glm.hpp>
+#include "NDS/System/Archive.hpp"
 
 namespace MapGraphicsHandler {
     void ClearModelCache();

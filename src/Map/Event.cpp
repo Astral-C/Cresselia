@@ -35,7 +35,6 @@ EventData LoadEvents(std::shared_ptr<Palkia::Nitro::File> file, std::shared_ptr<
     std::vector<uint16_t> moveModelIDs;
     while(moveModelStream.getSize() - moveModelStream.tell() >= 2){
         uint16_t id = moveModelStream.readUInt16();
-        std::cout << "read movemodel ID " << id << std::endl;
         moveModelIDs.push_back(id);
     }
 
@@ -57,7 +56,6 @@ EventData LoadEvents(std::shared_ptr<Palkia::Nitro::File> file, std::shared_ptr<
         spawn.unk2 = eventStream.readUInt16();
         spawn.orientation = eventStream.readUInt16();
         spawn.unk3 = eventStream.readUInt16();
-        std::cout << std::format("Reading Spawn Evt w/ Position {},{},{}", spawn.x, spawn.y, spawn.z) << std::endl;
         events.spawnEvents.emplace_back(std::move(spawn));
     }
 

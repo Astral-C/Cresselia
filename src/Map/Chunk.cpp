@@ -1,5 +1,5 @@
-#include <glm/glm/glm.hpp>
-#include <glm/glm/gtc/matrix_transform.hpp>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <NDS/Assets/NSBMD.hpp>
 #include <NDS/Assets/NSBTX.hpp>
 #include "IDManager.hpp"
@@ -40,9 +40,13 @@ void MapChunkHeader::Read(bStream::CStream& stream, uint32_t gameCode){
         mTextBoxType = stream.readUInt8();
         mWeatherID = stream.readUInt8();
         mCameraID = stream.readUInt8();
-        mMapType = stream.readUInt8();
+        
+        uint16_t data = stream.readUInt16();
+        mMapType = data & 0b1111111;
+        mBattleBgType = (data >> 7) & 0b1111111;
 
-        uint8_t byte = stream.readUInt8();
+        uint8_t byte = (data >> 12) & 0b1111111;
+        //uint8_t byte = stream.readUInt8();
         mBattleBgType = byte & 0b11110000;
         mBicycleFlag = byte & 0b00001000;
         mDashFlag = byte & 0b00000100;

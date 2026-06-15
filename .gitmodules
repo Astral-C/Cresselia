@@ -6,7 +6,7 @@
 	url = https://github.com/Astral-C/bStream.git
 [submodule "lib/Palkia"]
 	path = lib/Palkia
-	url = https://github.com/Astral-C/Palkia
+	url = git@github.com:Astral-C/Palkia.git
 [submodule "lib/imgui"]
 	path = lib/imgui
 	url = https://github.com/ocornut/imgui.git

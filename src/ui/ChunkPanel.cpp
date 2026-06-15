@@ -42,6 +42,7 @@ std::shared_ptr<Palkia::Nitro::Archive> MapTexArchive { nullptr };
 std::shared_ptr<Palkia::Nitro::File> MapTexArchiveFile { nullptr };
 
 // Current Area/Headers Loaded
+uint8_t CurrentAreaID { 0xFF };
 Area CurrentChunkArea { };
 std::map<uint16_t, MapChunk> CurrentMapChunks {};
 std::map<uint16_t, std::shared_ptr<Palkia::Nitro::File>> LandDataFiles { };
@@ -179,7 +180,9 @@ void DrawPanel(USceneCamera& camera){
     for(uint8_t y = 0; y < MatrixPanel::CurrentMatrix.GetHeight(); y++){
         for(uint8_t x = 0; x < MatrixPanel::CurrentMatrix.GetWidth(); x++){
             MatrixEntry entry = entries[(y * MatrixPanel::CurrentMatrix.GetWidth() )+ x];
-            if(entry.mChunk == 0xFFFF) continue;
+            if(entry.mChunk == 0xFFFF || entry.mHeader == 0xFFFF 
+                || MapHeaderPanel::Headers[entry.mHeader].mAreaID != CurrentAreaID
+                || MapHeaderPanel::Headers[entry.mHeader].mPlaceNameID != MapHeaderPanel::Headers[MapHeaderPanel::SelectedHeaderIndex].mPlaceNameID) continue;
             CurrentMapChunks[entry.mChunk].Draw(x, y, entry.mHeight*8, projection * view);
         }        
     }
@@ -218,6 +221,8 @@ void DrawPanel(USceneCamera& camera){
 void SetChunkData(uint8_t areaID, uint16_t header, const GameConfig& config){
     CurrentChunkArea = {};
     CurrentMapChunks.clear();
+
+    CurrentAreaID = areaID;
     
     {
         std::shared_ptr<Palkia::Nitro::File> areaFile = AreaDataArchive->GetFileByIndex(areaID);
@@ -229,14 +234,17 @@ void SetChunkData(uint8_t areaID, uint16_t header, const GameConfig& config){
     
         for(uint8_t y = 0; y < MatrixPanel::CurrentMatrix.GetHeight(); y++){
             for(uint8_t x = 0; x < MatrixPanel::CurrentMatrix.GetWidth(); x++){
-                MatrixEntry entry = entries[(y * MatrixPanel::CurrentMatrix.GetWidth() )+ x];
-                if(entry.mChunk == 0xFFFF || entry.mHeader == 0xFFFF || MapHeaderPanel::Headers[entry.mHeader].mAreaID != areaID) continue;
+                MatrixEntry entry = entries[(y * MatrixPanel::CurrentMatrix.GetWidth()) + x];
+                if(entry.mChunk == 0xFFFF || entry.mHeader == 0xFFFF 
+                    || MapHeaderPanel::Headers[entry.mHeader].mAreaID != areaID
+                    || MapHeaderPanel::Headers[entry.mHeader].mPlaceNameID != MapHeaderPanel::Headers[MapHeaderPanel::SelectedHeaderIndex].mPlaceNameID) continue;
 
-                QueuedCameraPosition = {(x * 512) + 256, (y * 512) + 256};
+                QueuedCameraPosition = {(x * 512), (y * 512) + 256};
                 
                 std::shared_ptr<Palkia::Nitro::File> chunkFile = LandDataArchive->GetFileByIndex(entry.mChunk);
                 bStream::CMemoryStream chunkStream(chunkFile->GetData(), chunkFile->GetSize(), bStream::Endianess::Little, bStream::OpenMode::In);
                 CurrentMapChunks[entry.mChunk] = MapChunk(chunkStream, config.mGameCode);
+                CurrentMapChunks[entry.mChunk].mID = entry.mChunk;
                 CurrentMapChunks[entry.mChunk].LoadGraphics(MapTexArchive->GetFileByIndex(CurrentChunkArea.mMapTileset), BuildModelArchive);
             }        
         }

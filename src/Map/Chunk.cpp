@@ -99,9 +99,9 @@ void MapChunk::LoadGraphics(std::shared_ptr<Palkia::Nitro::File> mapTex, std::sh
 
     MapGraphicsHandler::mLoadedChunkModels[mID] = mapModel;
 
-    std::cout << "Building Count " << mBuildings.size() << std::endl;
+    //std::cout << "Building Count " << mBuildings.size() << std::endl;
     for(auto building : mBuildings){
-        std::cout << "Building ID " << building.mModelID << std::endl;
+        //std::cout << "Building ID " << building.mModelID << std::endl;
         if(!MapGraphicsHandler::mLoadedModels.contains(building.mModelID) && building.mModelID < buildModels->GetFileCount()){
             auto buildingModel = buildModels->GetFileByIndex(building.mModelID);
             bStream::CMemoryStream buildingModelStream(buildingModel->GetData(), buildingModel->GetSize(), bStream::Endianess::Little, bStream::OpenMode::In);
@@ -128,7 +128,7 @@ void MapChunk::Draw(uint8_t cx, uint8_t cy, uint8_t cz, glm::mat4 v){
 }
 
 Building* MapChunk::Select(uint32_t id){
-    std::cout << "Selecting building in chunk ID " << mID << std::endl;
+    //std::cout << "Selecting building in chunk ID " << mID << std::endl;
     for(int i = 0; i < mBuildings.size(); i++){
         if(id != 0 && id == mBuildings[i].mPickID){
             return &mBuildings[i];
@@ -198,7 +198,7 @@ void MapChunk::Save(std::shared_ptr<Palkia::Nitro::Archive> archive){
     uint32_t dataSize = (mMovementPermissions.size() * 2) + (0x30 * mBuildings.size()) + mModelData.size() + mBDHCData.size();
     bStream::CMemoryStream stream(dataSize, bStream::Endianess::Little, bStream::OpenMode::Out);
 
-    std::cout << "Saving Chunk ID " << mID << std::endl;
+    //std::cout << "Saving Chunk ID " << mID << std::endl;
 
     stream.writeUInt32(mMovementPermissions.size() * 2);
     stream.writeUInt32(0x30 * mBuildings.size());

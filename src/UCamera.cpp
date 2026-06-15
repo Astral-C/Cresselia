@@ -1,75 +1,55 @@
 #include "UCamera.hpp"
 #include "UInput.hpp"
-#include "glm/ext/vector_float3.hpp"
-#include "glm/trigonometric.hpp"
 
-#include <cmath>
 #include <iostream>
 #include <algorithm>
 #include <GLFW/glfw3.h>
 
 USceneCamera::USceneCamera() : mNearPlane(1.0f), mFarPlane(1000000.f), mFovy(glm::radians(60.f)),
     mCenter(ZERO), mEye(ZERO), mPitch(0.f), mYaw(glm::half_pi<float>()), mUp(UNIT_Y), mRight(UNIT_X), mForward(UNIT_Z),
-    mAspectRatio(16.f / 9.f), mMoveSpeed(10.f), mMouseSensitivity(0.25f), mIsOrtho(false), mWinWidth(1280), mWinHeight(720), mOrthoZoom(12.0f)
+    mAspectRatio(16.f / 9.f), mMoveSpeed(1000.f), mMouseSensitivity(0.25f), mIsOrtho(false), mWinWidth(1280), mWinHeight(720), mOrthoZoom(1.0f)
 {
-	//mCenter = mEye - mForward;
-	mEye.z = (mOrthoZoom * 16) * std::sin(glm::radians(45.0f));
-	mEye.y = (mOrthoZoom * 16) * std::tan(glm::radians(45.0f));
+	mCenter = mEye - mForward;
 }
 
 void USceneCamera::SetPosition(glm::vec2 pos){
-    mEye.x = pos.y;
-   	mEye.z = pos.x +(mOrthoZoom * 16) * std::sin(glm::radians(45.0f));
-    mEye.y = (mOrthoZoom * 16) * std::tan(glm::radians(45.0f));
+    mCenter = { pos.x, 0, pos.y };
+    mEye = mCenter + mForward;
+    mEye.y = 100;
 }
 
 void USceneCamera::Update(float deltaTime) {
 	glm::vec3 moveDir = glm::zero<glm::vec3>();
 
-	if (UInput::GetKey(GLFW_KEY_W)){
-        mEye.z -= mMoveSpeed;
-        mCenter.z -= mMoveSpeed;
-	//	moveDir -= mForward;
-	}
-	if (UInput::GetKey(GLFW_KEY_S)){
-	    mEye.z += mMoveSpeed;
-	    mCenter.z += mMoveSpeed;
-	}
-	//	moveDir += mForward;
-	if (UInput::GetKey(GLFW_KEY_D)){
-	    mEye.x += mMoveSpeed;
-	    //mCenter.x += mMoveSpeed;	
-	//	moveDir -= mRight;
-    }
-	if (UInput::GetKey(GLFW_KEY_A)){
-        mEye.x -= mMoveSpeed;
-	    //mCenter.x -= mMoveSpeed;
-	//    moveDir += mRight;
-	}
-	
-	/*
+	if (UInput::GetKey(GLFW_KEY_W))
+		moveDir -= mForward;
+	if (UInput::GetKey(GLFW_KEY_S))
+		moveDir += mForward;
+	if (UInput::GetKey(GLFW_KEY_D))
+		moveDir -= mRight;
+	if (UInput::GetKey(GLFW_KEY_A))
+		moveDir += mRight;
+
 	if (UInput::GetKey(GLFW_KEY_Q))
-		mEye.y -= mMoveSpeed;
+		moveDir -= mUp;
 	if (UInput::GetKey(GLFW_KEY_E))
-		mEye.y += mMoveSpeed;
-	*/
-		
-	
-	//mMoveSpeed += UInput::GetMouseScrollDelta() * 100 * deltaTime;
+		moveDir += mUp;
+
+	mMoveSpeed += UInput::GetMouseScrollDelta() * 100 * deltaTime;
 	mMoveSpeed = std::clamp(mMoveSpeed, 100.f, 50000.f);
 	float actualMoveSpeed = UInput::GetKey(GLFW_KEY_LEFT_SHIFT) ? mMoveSpeed * 10.f : mMoveSpeed;
 
-	//if (UInput::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT))
-	//	Rotate(deltaTime, UInput::GetMouseDelta());
+	if (UInput::GetMouseButton(GLFW_MOUSE_BUTTON_RIGHT))
+		Rotate(deltaTime, UInput::GetMouseDelta());
 
-	//if (glm::length(moveDir) != 0.f)
-	//	moveDir = glm::normalize(moveDir);
+	if (glm::length(moveDir) != 0.f)
+		moveDir = glm::normalize(moveDir);
 
-	//mEye += moveDir * (actualMoveSpeed * deltaTime);
-	//mCenter = mEye - mForward;
+	mEye += moveDir * (actualMoveSpeed * deltaTime);
+	mCenter = mEye - mForward;
 
-	//if(UInput::GetKey(GLFW_KEY_Z)) mOrthoZoom += 0.01f;
-	//if(UInput::GetKey(GLFW_KEY_X)) mOrthoZoom -= 0.01f;
+	if(UInput::GetKey(GLFW_KEY_Z)) mOrthoZoom += 0.01f;
+	if(UInput::GetKey(GLFW_KEY_X)) mOrthoZoom -= 0.01f;
 }
 
 void USceneCamera::Rotate(float deltaTime, glm::vec2 mouseDelta) {

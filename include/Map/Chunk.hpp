@@ -42,12 +42,12 @@ struct Building {
 };
 
 class MapChunk {
-    uint16_t mID;
     std::array<std::pair<uint8_t, uint8_t>, 1024> mMovementPermissions {};
     std::vector<Building> mBuildings {};
     std::vector<uint8_t> mModelData {};
     std::vector<uint8_t> mBDHCData {};
 public:
+    uint16_t mID;
 
     std::vector<Building> GetBuildings() { return mBuildings; }
 

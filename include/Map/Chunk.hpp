@@ -42,16 +42,16 @@ struct Building {
 };
 
 class MapChunk {
-    std::array<std::pair<uint8_t, uint8_t>, 1024> mMovementPermissions {};
     std::vector<Building> mBuildings {};
     std::vector<uint8_t> mModelData {};
     std::vector<uint8_t> mBDHCData {};
 public:
+    std::array<std::pair<uint8_t, uint8_t>, 1024> mMovementPermissions {};
     uint16_t mID;
 
     std::vector<Building> GetBuildings() { return mBuildings; }
 
-    std::array<std::pair<uint8_t, uint8_t>, 1024>& GetMovementPermissions() { return mMovementPermissions; }
+    //std::array<std::pair<uint8_t, uint8_t>, 1024>& GetMovementPermissions() { return mMovementPermissions; }
 
     Building* Select(uint32_t id);
 
@@ -67,7 +67,8 @@ public:
     }
 
     void ImportChunkNSBMD(std::string path);
-
+    void ExportChunkNSBMD(std::string path);
+    
     void Draw(uint8_t cx, uint8_t cy, uint8_t cz, glm::mat4 v);
     void Save(std::shared_ptr<Palkia::Nitro::Archive> archive);
 

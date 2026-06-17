@@ -15,7 +15,7 @@ USceneCamera::USceneCamera() : mNearPlane(1.0f), mFarPlane(1000000.f), mFovy(glm
 void USceneCamera::SetPosition(glm::vec2 pos){
     mCenter = { pos.x, 0, pos.y };
     mEye = mCenter + mForward;
-    mEye.y = 100;
+    mEye.y = 150;
 }
 
 void USceneCamera::Update(float deltaTime) {

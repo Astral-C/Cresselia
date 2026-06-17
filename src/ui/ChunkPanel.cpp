@@ -28,6 +28,8 @@ float PrevWinHeight { -1.0f };
 
 glm::vec2 QueuedCameraPosition { 0.0f, 0.0f };
 
+bool inPermsMode { false };
+
 // LandData arc from ROM
 std::shared_ptr<Palkia::Nitro::Archive> LandDataArchive { nullptr };
 std::shared_ptr<Palkia::Nitro::File> LandDataArchiveFile { nullptr };
@@ -187,8 +189,6 @@ void DrawPanel(USceneCamera& camera){
         }        
     }
     
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glBindRenderbuffer(GL_RENDERBUFFER, 0);
     
     cursorPos = ImGui::GetCursorScreenPos();
     ImVec2 frameSize = {ImGui::GetStyle().WindowBorderSize, ImGui::GetStyle().WindowBorderSize};
@@ -208,7 +208,23 @@ void DrawPanel(USceneCamera& camera){
         glReadBuffer(GL_COLOR_ATTACHMENT1);
         uint32_t id = 0xFFFFFFFF;
         glReadPixels(static_cast<GLint>(pickPos.x), static_cast<GLint>(pickPos.y), 1, 1, GL_RED_INTEGER, GL_UNSIGNED_INT, (void*)&id);
+        
+        if(id != 0xFFFFFFFF){
+            uint chunkid = id & 0xFFFF;
+            uint tileid = (id >> 16) & 0xFFFF;
+
+            if(tileid >= 0 && tileid < 1024){
+                //auto perms = CurrentMapChunks[chunkid].mMovementPermissions();
+                if(CurrentMapChunks[chunkid].mMovementPermissions[tileid].second == 0x00){
+                    CurrentMapChunks[chunkid].mMovementPermissions[tileid].second = 0x80;
+                } else {
+                    CurrentMapChunks[chunkid].mMovementPermissions[tileid].second = 0x00;
+                }
+            }
+        }
     }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
     
     ImGuizmo::BeginFrame();
     ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());

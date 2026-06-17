@@ -5,10 +5,77 @@
 #include "IDManager.hpp"
 #include "Map/Chunk.hpp"
 #include "Util.hpp"
+#include "glad/glad.h"
 
 namespace MapGraphicsHandler {
     std::map<uint16_t, Palkia::Formats::NSBMD*> mLoadedChunkModels;
     std::map<uint16_t, Palkia::Formats::NSBMD*> mLoadedModels;
+
+    uint32_t mChunkProgram = 0xFFFFFFFF;
+
+    const char* map_vtx_shader_source = "#version 460\n\
+        #extension GL_ARB_separate_shader_objects : enable\n\
+        layout(location = 0) in vec3 inPosition;\n\
+        layout(location = 1) in vec3 inNormal;\n\
+        layout(location = 2) in vec3 inColor;\n\
+        layout(location = 3) in vec2 inTexCoord;\n\
+        layout(location = 4) in int inMtxIdx; \n\
+        \
+        uniform mat4 transform;\n\
+        uniform mat4 stackMtx;\n\
+        uniform mat4 scaleMtx;\n\
+        \
+        layout(location = 0) out vec2 fragTexCoord;\n\
+        layout(location = 1) out vec3 fragVtxColor;\n\
+        layout(location = 2) out vec3 fragVtxPos;\n\
+        \
+        void main()\n\
+        {\
+            gl_Position = transform * stackMtx * scaleMtx * vec4(inPosition, 1.0);\n\
+            fragVtxColor = inColor;\n\
+            fragTexCoord = inTexCoord;\n\
+            fragVtxPos = inPosition;\n\
+        }\
+    ";
+    
+    // chunk stuff is a stupid hack.
+    // this whole thing is a stupid hack
+    // but its a coooool stupid hack
+    const char* map_frg_shader_source = "#version 460\n\
+        #extension GL_ARB_separate_shader_objects : enable\n\
+        \
+        uniform sampler2D texSampler;\n\
+        uniform mat3x2 texMatrix;\n\
+        uniform uint permissions[1024];\n\
+        uniform uint chunkid;\n\
+        layout(location = 0) in vec2 fragTexCoord;\n\
+        layout(location = 1) in vec3 fragVtxColor;\n\
+        layout(location = 2) in vec3 fragVtxPos;\n\
+        \
+        layout(location = 0) out vec4 outColor;\n\
+        layout(location = 1) out uint outPick;\n\
+        \
+        void main()\n\
+        {\n\
+            vec4 texel = texture(texSampler, (texMatrix * vec3(fragTexCoord, 0)).xy );\n\
+            outColor = texel * vec4(fragVtxColor.xyz, 1.0) * vec4(0.5, 0.5, 0.5, 1.0);\n\
+            uint permx = (uint((fragVtxPos.x * 64) + 256) % 512) / 16;\n\
+            uint permy = (uint((fragVtxPos.z * 64) + 256) % 512) / 16;\n\
+            uint tileIdx = (permy * 32) + permx;\n\
+            if(permissions[tileIdx] == 0x80){\n\
+                outColor = outColor + vec4(0.5,0.0,0.0,0.0);\n\
+            } else {\n\
+                outColor = outColor + vec4(0.0,0.5,0.0,0.0);\n\
+            }\n\
+            if(outColor.a < 1.0 / 255.0) discard;\n\
+            if(tileIdx >= 0 || tileIdx  < 1024 || (outColor.a > (1.0 / 255.0))){\n\
+                outPick = (((permy * 32) + permx) << 16) | chunkid;\n\
+            } else {\n\
+                outPick = 0xFFFFFFFF;\n\
+            }\n\
+        }\
+    ";
+
     void ClearModelCache(){
         for(auto [id, model] : mLoadedChunkModels){
             delete model;
@@ -20,6 +87,47 @@ namespace MapGraphicsHandler {
 
         mLoadedChunkModels.clear();
         mLoadedModels.clear();
+    }
+
+
+    void InitMapShader(){
+        char glErrorLogBuffer[4096];
+        uint32_t vs = glCreateShader(GL_VERTEX_SHADER);
+        uint32_t fs = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(vs, 1, &map_vtx_shader_source, NULL);
+        glShaderSource(fs, 1, &map_frg_shader_source, NULL);
+        glCompileShader(vs);
+        int32_t status;
+        glGetShaderiv(vs, GL_COMPILE_STATUS, &status);
+        if(status == GL_FALSE){
+            int32_t infoLogLength;
+            glGetShaderiv(vs, GL_INFO_LOG_LENGTH, &infoLogLength);
+            glGetShaderInfoLog(vs, infoLogLength, NULL, glErrorLogBuffer);
+            printf("[NSBMD Loader]: Compile failure in mdl vertex shader:\n%s\n", glErrorLogBuffer);
+        }
+        glCompileShader(fs);
+        glGetShaderiv(fs, GL_COMPILE_STATUS, &status);
+        if(status == GL_FALSE){
+            int32_t infoLogLength;
+            glGetShaderiv(fs, GL_INFO_LOG_LENGTH, &infoLogLength);
+            glGetShaderInfoLog(fs, infoLogLength, NULL, glErrorLogBuffer);
+            printf("[NSBMD Loader]: Compile failure in mdl fragment shader:\n%s\n", glErrorLogBuffer);
+        }
+        mChunkProgram = glCreateProgram();
+        glAttachShader(mChunkProgram, vs);
+        glAttachShader(mChunkProgram, fs);
+        glLinkProgram(mChunkProgram);
+        glGetProgramiv(mChunkProgram, GL_LINK_STATUS, &status);
+        if(GL_FALSE == status) {
+            int32_t logLen;
+            glGetProgramiv(mChunkProgram, GL_INFO_LOG_LENGTH, &logLen);
+            glGetProgramInfoLog(mChunkProgram, logLen, NULL, glErrorLogBuffer);
+            //printf("[NSBMD Loader]: Shader Program Linking Error:\n%s\n", glErrorLogBuffer);
+        }
+        glDetachShader(mChunkProgram, vs);
+        glDetachShader(mChunkProgram, fs);
+        glDeleteShader(vs);
+        glDeleteShader(fs);
     }
 }
 
@@ -116,9 +224,25 @@ void MapChunk::LoadGraphics(std::shared_ptr<Palkia::Nitro::File> mapTex, std::sh
 
 void MapChunk::Draw(uint8_t cx, uint8_t cy, uint8_t cz, glm::mat4 v){
     glm::mat4 chunkTransform = v * glm::translate(glm::mat4(1.0f), glm::vec3(cx * 512, cz, cy * 512));
-    if(MapGraphicsHandler::mLoadedChunkModels[mID] != nullptr){
-        MapGraphicsHandler::mLoadedChunkModels[mID]->Render(chunkTransform, 0);
+
+    uint32_t perms[1024] = {0};
+
+    for(int t = 0; t < 1024; t++){
+        perms[t] = mMovementPermissions[t].second;
     }
+
+    if(MapGraphicsHandler::mChunkProgram == 0xFFFFFFFF){
+        MapGraphicsHandler::InitMapShader();
+    }
+    
+    glUseProgram(MapGraphicsHandler::mChunkProgram);
+    glUniformMatrix4fv(glGetUniformLocation(MapGraphicsHandler::mChunkProgram, "transform"), 1, 0, &chunkTransform[0][0]);
+    glUniform1uiv(glGetUniformLocation(MapGraphicsHandler::mChunkProgram, "permissions"), 1024, perms);
+    glUniform1ui(glGetUniformLocation(MapGraphicsHandler::mChunkProgram, "chunkid"), static_cast<uint32_t>(mID));
+    if(MapGraphicsHandler::mLoadedChunkModels[mID] != nullptr){
+        MapGraphicsHandler::mLoadedChunkModels[mID]->Render(chunkTransform, 0, true);
+    }
+    glUseProgram(0);
 
     for(auto building : mBuildings){
         glm::mat4 modelTransform = v * glm::translate(glm::mat4(1.0f), glm::vec3((cx * 512) + building.x, cz + building.y, (cy * 512) + building.z));
@@ -242,6 +366,11 @@ void MapChunk::ImportChunkNSBMD(std::string path){
 
     mModelData.resize(model.getSize());
     model.readBytesTo(mModelData.data(), mModelData.size());
+}
+
+void MapChunk::ExportChunkNSBMD(std::string path){
+    bStream::CFileStream model(path, bStream::Endianess::Little, bStream::OpenMode::Out);
+    model.writeBytes(mModelData.data(), mModelData.size());
 }
 
 MapChunk::MapChunk(){}
